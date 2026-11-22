@@ -1,0 +1,4 @@
+scenario,empty_cells,standard_nodes,standard_time_ms,standard_memory_kb,standard_move,standard_score,strategic_nodes,strategic_time_ms,strategic_memory_kb,strategic_move,strategic_score,node_reduction_percent
+Awal Permainan,9,20865,234.44739000115078,0.715625,0,0,7864,77.0244500017725,0.6875,4,0,62.31008866522885
+Pertengahan Permainan,5,61,1.0408799978904426,0.4375,8,10,43,0.8995799958938733,0.4375,8,10,29.508196721311474
+Akhir Permainan,2,2,0.03443000023253262,0.3125,4,10,2,0.026289999368600547,0.3125,4,10,0.0
