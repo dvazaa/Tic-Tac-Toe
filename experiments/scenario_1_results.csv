@@ -1,0 +1,4 @@
+scenario,empty_cells,minimax_move,minimax_score,minimax_nodes,minimax_time_ms,minimax_memory_kb,alpha_beta_move,alpha_beta_score,alpha_beta_nodes,alpha_beta_time_ms,alpha_beta_memory_kb,pruning_ratio_percent
+Awal Permainan,9,0,0,549945,4769.847089995164,0.715625,0,0,20865,207.57162000227254,0.6875,96.20598423478711
+Pertengahan Permainan,5,8,10,189,2.2519400023156777,0.4375,8,10,61,0.9556100034387782,0.4375,67.72486772486772
+Akhir Permainan,2,4,10,2,0.02387000131420791,0.3125,4,10,2,0.02086000458803028,0.3125,0.0
