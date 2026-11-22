@@ -18,5 +18,4 @@ def main():
     print("\n=== SELURUH EKSPERIMEN SELESAI ===")
 
 
-if __name__ == "__main__":
-    main()
+main()

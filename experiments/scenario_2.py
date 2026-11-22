@@ -236,5 +236,4 @@ def run_scenario_2():
 # 6. PROGRAM UTAMA
 # ==========================================
 
-if __name__ == "__main__":
-    run_scenario_2()
+run_scenario_2()

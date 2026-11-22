@@ -486,5 +486,4 @@ def run_scenario_3():
     print("=" * 65)
 
 
-if __name__ == "__main__":
-    run_scenario_3()
+run_scenario_3()
