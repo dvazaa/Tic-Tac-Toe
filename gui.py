@@ -21,7 +21,7 @@ from algorithms.minimax import find_best_move as find_best_move_minimax
 from algorithms.alpha_beta import find_best_move as find_best_move_alpha_beta
 
 
-# ---------------------------------------------------------------------------
+# ----------,-----------------------------------------------------------------
 # Konstanta Jendela & Warna (disesuaikan dengan Gambar 5-8 pada jurnal)
 # ---------------------------------------------------------------------------
 WINDOW_WIDTH = 450
