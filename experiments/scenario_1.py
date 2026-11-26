@@ -75,7 +75,7 @@ def display_test_board(board):
 # 3. MENJALANKAN PENGUJIAN ALGORITMA
 # ==========================================
 
-def run_algorithm(algorithm, board, player):
+def run_algorithm(algorithm, board, player, on_step=None):
     execution_times = []
     memory_usages = []
 
@@ -83,7 +83,7 @@ def run_algorithm(algorithm, board, player):
     best_moves = []
     best_scores = []
 
-    for _ in range(REPEAT_TEST):
+    for rep in range(1, REPEAT_TEST + 1):
 
         # Salinan papan agar kondisi awal tetap sama
         test_board = board.copy()
@@ -103,6 +103,9 @@ def run_algorithm(algorithm, board, player):
 
         best_moves.append(move)
         best_scores.append(score)
+
+        if on_step is not None:
+            on_step(rep, REPEAT_TEST)
 
     return {
         "nodes": statistics.mean(node_counts),
@@ -132,9 +135,11 @@ def calculate_pruning_ratio(minimax_nodes, alpha_beta_nodes):
 # 5. MENJALANKAN SKENARIO 1
 # ==========================================
 
-def run_scenario_1():
+def run_scenario_1(on_progress=None):
 
     results = []
+    total_steps = len(BOARD_STATES) * 2 * REPEAT_TEST
+    completed_steps = 0
 
     print("=" * 55)
     print("SKENARIO 1: PENGUJIAN BERDASARKAN KEDALAMAN POHON")
@@ -159,18 +164,42 @@ def run_scenario_1():
         # Kedua algoritma menggunakan pemain X
         player = AI
 
+        def _notify(stage):
+            if on_progress is not None:
+                on_progress({
+                    "stage": stage,
+                    "progress": completed_steps / total_steps,
+                    "rows": list(results),
+                })
+
         print("Menjalankan Minimax...")
+        _notify(f"{scenario['name']}: Minimax (0/{REPEAT_TEST})")
+
+        def _mm_step(rep, total):
+            nonlocal completed_steps
+            completed_steps += 1
+            _notify(f"{scenario['name']}: Minimax ({rep}/{total})")
+
         minimax_result = run_algorithm(
             minimax,
             board,
-            player
+            player,
+            on_step=_mm_step
         )
 
         print("Menjalankan Alpha-Beta...")
+        _notify(f"{scenario['name']}: Alpha-Beta (0/{REPEAT_TEST})")
+
+        def _ab_step(rep, total):
+            nonlocal completed_steps
+            completed_steps += 1
+            _notify(f"{scenario['name']}: Alpha-Beta ({rep}/{total})")
+
         alpha_beta_result = run_algorithm(
             alpha_beta,
             board,
-            player
+            player,
+            on_step=_ab_step
         )
 
         pruning_ratio = calculate_pruning_ratio(
@@ -210,6 +239,7 @@ def run_scenario_1():
         }
 
         results.append(result)
+        _notify(f"Selesai {scenario['name']} ({index}/{len(BOARD_STATES)})")
 
         # Menampilkan hasil
         print("\nHASIL PENGUJIAN")

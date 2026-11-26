@@ -75,7 +75,7 @@ def display_test_board(board):
 # 3. MENJALANKAN PENGUJIAN
 # ==========================================
 
-def run_ordering_test(board, move_order):
+def run_ordering_test(board, move_order, on_step=None):
 
     nodes = []
     times = []
@@ -83,7 +83,7 @@ def run_ordering_test(board, move_order):
     moves = []
     scores = []
 
-    for _ in range(REPEAT_TEST):
+    for rep in range(1, REPEAT_TEST + 1):
 
         test_board = board.copy()
 
@@ -100,6 +100,9 @@ def run_ordering_test(board, move_order):
         moves.append(move)
         scores.append(score)
 
+        if on_step is not None:
+            on_step(rep, REPEAT_TEST)
+
     return {
         "nodes": statistics.mean(nodes),
         "time_ms": statistics.mean(times),
@@ -113,9 +116,11 @@ def run_ordering_test(board, move_order):
 # 4. MENJALANKAN SKENARIO 2
 # ==========================================
 
-def run_scenario_2():
+def run_scenario_2(on_progress=None):
 
     results = []
+    total_steps = len(BOARD_STATES) * 2 * REPEAT_TEST
+    completed_steps = 0
 
     print("=" * 60)
     print("SKENARIO 2: PENGUJIAN MOVE ORDERING")
@@ -134,16 +139,40 @@ def run_scenario_2():
             print("Papan tidak valid untuk pengujian.")
             continue
 
+        def _notify(stage):
+            if on_progress is not None:
+                on_progress({
+                    "stage": stage,
+                    "progress": completed_steps / total_steps,
+                    "rows": list(results),
+                })
+
         print("Menjalankan Alpha-Beta Standard...")
+        _notify(f"{scenario['name']}: Standard (0/{REPEAT_TEST})")
+
+        def _std_step(rep, total):
+            nonlocal completed_steps
+            completed_steps += 1
+            _notify(f"{scenario['name']}: Standard ({rep}/{total})")
+
         standard = run_ordering_test(
             board,
-            "standard"
+            "standard",
+            on_step=_std_step
         )
 
         print("Menjalankan Alpha-Beta Strategic...")
+        _notify(f"{scenario['name']}: Strategic (0/{REPEAT_TEST})")
+
+        def _str_step(rep, total):
+            nonlocal completed_steps
+            completed_steps += 1
+            _notify(f"{scenario['name']}: Strategic ({rep}/{total})")
+
         strategic = run_ordering_test(
             board,
-            "strategic"
+            "strategic",
+            on_step=_str_step
         )
 
         # Menghitung pengurangan node
@@ -175,6 +204,7 @@ def run_scenario_2():
         }
 
         results.append(result)
+        _notify(f"Selesai {scenario['name']} ({index}/{len(BOARD_STATES)})")
 
         # Menampilkan hasil pengujian
         print("\nHASIL STANDARD ORDERING")

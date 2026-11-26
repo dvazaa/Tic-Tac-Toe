@@ -205,7 +205,7 @@ def get_metric_values(metrics, agent_name):
 # 6. PENGUJIAN MELAWAN RANDOM AGENT
 # ==========================================
 
-def run_random_matches():
+def run_random_matches(on_round=None):
 
     game_results = []
     summary = {}
@@ -286,6 +286,9 @@ def run_random_matches():
                 f"Hasil: {outcome}"
             )
 
+            if on_round is not None:
+                on_round(algorithm_name, game_number, TOTAL_ROUNDS, list(game_results))
+
         print_summary(
             algorithm_name,
             summary[algorithm_name]
@@ -298,7 +301,7 @@ def run_random_matches():
 # 7. PERTANDINGAN MINIMAX VS ALPHA-BETA
 # ==========================================
 
-def run_direct_matches():
+def run_direct_matches(on_round=None):
 
     game_results = []
 
@@ -394,6 +397,9 @@ def run_direct_matches():
             f"Pemenang: {result['winner_name']}"
         )
 
+        if on_round is not None:
+            on_round(game_number, TOTAL_ROUNDS, list(game_results))
+
     print("\nHASIL MINIMAX")
     print_summary("Minimax", summary["Minimax"])
 
@@ -465,11 +471,40 @@ def save_csv(filename, results):
 # 10. PROGRAM UTAMA
 # ==========================================
 
-def run_scenario_3():
+def run_scenario_3(on_progress=None):
 
-    random_results, random_summary = run_random_matches()
+    total_rounds = TOTAL_ROUNDS * (len(ALGORITHMS) + 1)
+    completed = 0
+    latest_random = []
+    latest_direct = []
 
-    direct_results, direct_summary = run_direct_matches()
+    def _on_random_round(algo_name, game_number, total, rows):
+        nonlocal completed, latest_random
+        completed += 1
+        latest_random = rows
+        if on_progress is not None:
+            on_progress({
+                "stage": f"{algo_name} vs Random: Ronde {game_number}/{total}",
+                "progress": completed / total_rounds,
+                "random_rows": rows,
+                "direct_rows": latest_direct,
+            })
+
+    def _on_direct_round(game_number, total, rows):
+        nonlocal completed, latest_direct
+        completed += 1
+        latest_direct = rows
+        if on_progress is not None:
+            on_progress({
+                "stage": f"Minimax vs Alpha-Beta: Ronde {game_number}/{total}",
+                "progress": completed / total_rounds,
+                "random_rows": latest_random,
+                "direct_rows": rows,
+            })
+
+    random_results, random_summary = run_random_matches(on_round=_on_random_round)
+
+    direct_results, direct_summary = run_direct_matches(on_round=_on_direct_round)
 
     save_csv(
         "scenario_3_random_results.csv",
