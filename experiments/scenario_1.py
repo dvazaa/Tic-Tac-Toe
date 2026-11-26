@@ -1,7 +1,15 @@
 
 import csv
 import os
+import sys
 import statistics
+
+ROOT_DIR = os.path.dirname(
+    os.path.dirname(os.path.abspath(__file__))
+)
+
+if ROOT_DIR not in sys.path:
+    sys.path.insert(0, ROOT_DIR)
 
 from board.board import (
     AI,
@@ -41,9 +49,9 @@ BOARD_STATES = [
     {
         "name": "Akhir Permainan",
         "board": [
-            AI, HUMAN, AI,
-            HUMAN, EMPTY, HUMAN,
-            AI, AI, EMPTY
+            HUMAN, AI, HUMAN,
+            HUMAN, AI, AI,
+            EMPTY, HUMAN, EMPTY
         ]
     }
 ]
@@ -170,6 +178,15 @@ def run_scenario_1():
             alpha_beta_result["nodes"]
         )
 
+        score_match = (
+            minimax_result["best_score"]
+            == alpha_beta_result["best_score"]
+        )
+        move_match = (
+            minimax_result["best_move"]
+            == alpha_beta_result["best_move"]
+        )
+
         # Menyimpan hasil pengujian
         result = {
             "scenario": scenario["name"],
@@ -187,7 +204,9 @@ def run_scenario_1():
             "alpha_beta_time_ms": alpha_beta_result["execution_time_ms"],
             "alpha_beta_memory_kb": alpha_beta_result["peak_memory_kb"],
 
-            "pruning_ratio_percent": pruning_ratio
+            "pruning_ratio_percent": pruning_ratio,
+            "move_match": move_match,
+            "score_match": score_match
         }
 
         results.append(result)
@@ -200,14 +219,18 @@ def run_scenario_1():
         print(f"Waktu Eksekusi    : {minimax_result['execution_time_ms']:.6f} ms")
         print(f"Penggunaan Memori : {minimax_result['peak_memory_kb']:.4f} KB")
         print(f"Langkah Terbaik   : {minimax_result['best_move']}")
+        print(f"Skor Optimal      : {minimax_result['best_score']}")
 
         print("\nAlpha-Beta Pruning:")
         print(f"Jumlah Node       : {alpha_beta_result['nodes']:.0f}")
         print(f"Waktu Eksekusi    : {alpha_beta_result['execution_time_ms']:.6f} ms")
         print(f"Penggunaan Memori : {alpha_beta_result['peak_memory_kb']:.4f} KB")
         print(f"Langkah Terbaik   : {alpha_beta_result['best_move']}")
+        print(f"Skor Optimal      : {alpha_beta_result['best_score']}")
 
         print(f"\nPruning Ratio     : {pruning_ratio:.2f}%")
+        print(f"Kesesuaian Langkah: {'Sama' if move_match else 'Alternatif'}")
+        print(f"Kesesuaian Skor   : {'Optimal (Sama)' if score_match else 'Berbeda!'}")
 
     # ======================================
     # 6. MENYIMPAN HASIL KE CSV
@@ -244,4 +267,5 @@ def run_scenario_1():
 # 7. PROGRAM UTAMA
 # ==========================================
 
-run_scenario_1()
+if __name__ == "__main__":
+    run_scenario_1()

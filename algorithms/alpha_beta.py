@@ -48,7 +48,8 @@ def alpha_beta(
     pilihan urutan langkah.
     """
 
-    stats["nodes"] += 1
+    if stats is not None:
+        stats["nodes"] += 1
 
     opponent = HUMAN if player == AI else AI
     state = get_game_state(board)

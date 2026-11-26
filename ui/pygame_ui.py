@@ -1,8 +1,6 @@
 import csv
 import os
 import sys
-import time
-import tracemalloc
 from datetime import datetime
 import pygame
 
@@ -17,6 +15,7 @@ from board.board import (
 )
 from algorithms.minimax import find_best_move as minimax_move
 from algorithms.alpha_beta import find_best_move as alpha_beta_move
+from ui.experiment_viewer import ExperimentDashboard
 
 # --- KONFIGURASI WARNA & LAYAR ---
 GAME_AREA_W = 480
@@ -43,9 +42,12 @@ OVERLAY_BG = (0, 0, 0, 150)
 
 LOG_FILE = "game_metrics_log.csv"
 
+ALGO_OPTIONS = ["Minimax", "AB Standard", "AB Strategic"]
+
 ALGO_MAP = {
     "Minimax": minimax_move,
-    "Alpha-Beta": alpha_beta_move,
+    "AB Standard": lambda board, player: alpha_beta_move(board, player, move_order="standard"),
+    "AB Strategic": lambda board, player: alpha_beta_move(board, player, move_order="strategic"),
 }
 
 
@@ -70,6 +72,8 @@ class TicTacToeUI:
         self.font_med = pygame.font.SysFont("segoeui", 18, bold=True)
         self.font_small = pygame.font.SysFont("segoeui", 15)
         self.font_small_bold = pygame.font.SysFont("segoeui", 15, bold=True)
+        self.font_xs = pygame.font.SysFont("segoeui", 13)
+        self.font_xs_bold = pygame.font.SysFont("segoeui", 13, bold=True)
         self.font_symbol = pygame.font.SysFont("segoeui", 64, bold=True)
 
         # State Navigasi
@@ -78,7 +82,7 @@ class TicTacToeUI:
         # Pengaturan Mode & Algoritma
         self.mode = "Human vs AI"
         self.algo_p1 = "Minimax"
-        self.algo_p2 = "Alpha-Beta"
+        self.algo_p2 = "AB Standard"
 
         # State Permainan
         self.board = create_board()
@@ -111,6 +115,7 @@ class TicTacToeUI:
         self.grid_start_y = 215
 
         self._init_csv_log()
+        self.experiment_dashboard = ExperimentDashboard(self)
 
     def _init_csv_log(self):
         if not os.path.exists(LOG_FILE):
@@ -211,27 +216,30 @@ class TicTacToeUI:
         if now - self.last_ai_time < 400:
             return
 
-        # --- PENGUKURAN WAKTU, MEMORI, & NODE ---
-        tracemalloc.start()
-        t_start = time.perf_counter()
-        result = algo_fn(self.board, self.current_player)
-        exec_time_ms = (time.perf_counter() - t_start) * 1000
-        _, peak_mem = tracemalloc.get_traced_memory()
-        tracemalloc.stop()
-        peak_kb = peak_mem / 1024
-
-        # Ekstrak hasil (move, nodes) dari return fungsi algoritma
-        move = result[0]
-        nodes = result[1] if len(result) > 1 else 0
+        # --- PENGUKURAN WAKTU, MEMORI, & NODE (TERISOLASI DI FUNGSI PENCARIAN) ---
+        move, score, stats = algo_fn(self.board.copy(), self.current_player)
+        nodes = stats["nodes"]
+        exec_time_ms = stats["execution_time_ms"]
+        peak_kb = stats["peak_memory_kb"]
 
         # --- PENGUKURAN KUALITAS KEPUTUSAN ---
-        # Bandingkan dengan langkah optimal Minimax (jika pakai Alpha-Beta)
+        # Bandingkan langkah dan skor dengan Minimax optimal (jika pakai Alpha-Beta)
         if algo_name == "Minimax":
             quality = "Optimal"
         else:
-            opt_res = minimax_move(self.board.copy(), self.current_player)
-            opt_move = opt_res[0]
-            quality = "Optimal" if move == opt_move else "Optimal (Alternatif)"
+            if self.board.count(EMPTY) == 9:
+                # Pada papan kosong, nilai optimal Minimax secara matematis adalah 0 (seri)
+                # dengan langkah optimal pertama urutan standar pada indeks 0.
+                opt_move, opt_score = 0, 0
+            else:
+                opt_move, opt_score, _ = minimax_move(self.board.copy(), self.current_player)
+
+            if move == opt_move and score == opt_score:
+                quality = "Optimal"
+            elif score == opt_score:
+                quality = "Optimal (Alternatif)"
+            else:
+                quality = "Suboptimal"
 
         if move is not None:
             make_move(self.board, move, self.current_player)
@@ -271,7 +279,7 @@ class TicTacToeUI:
         self.screen.blit(title, title.get_rect(center=(WIDTH // 2, 45)))
 
         self.menu_buttons = {}
-        menu_w = 420
+        menu_w = 460
         menu_x = (WIDTH - menu_w) // 2
 
         lbl_mode = self.font_med.render("1. Pilih Mode Permainan:", True, TEXT_DARK)
@@ -285,32 +293,42 @@ class TicTacToeUI:
             self.menu_buttons[f"mode_{m}"] = draw_button(self.screen, rect, m, self.font_med, bg, hover, mouse_pos)
 
         y_algo = 320
-        half_w = (menu_w - 15) // 2
+        gap = 10
+        algo_w = (menu_w - gap * 2) // 3
         if self.mode == "Human vs AI":
             lbl = self.font_med.render("2. Pilih Algoritma AI (X):", True, TEXT_DARK)
             self.screen.blit(lbl, (menu_x, y_algo))
-            for i, algo in enumerate(["Minimax", "Alpha-Beta"]):
-                rect = pygame.Rect(menu_x + i * (half_w + 15), y_algo + 35, half_w, 42)
+            for i, algo in enumerate(ALGO_OPTIONS):
+                rect = pygame.Rect(menu_x + i * (algo_w + gap), y_algo + 35, algo_w, 42)
                 bg = BTN_COLOR if self.algo_p2 == algo else (189, 195, 199)
-                self.menu_buttons[f"algo2_{algo}"] = draw_button(self.screen, rect, algo, self.font_med, bg, BTN_HOVER, mouse_pos)
+                self.menu_buttons[f"algo2_{algo}"] = draw_button(self.screen, rect, algo, self.font_small_bold, bg, BTN_HOVER, mouse_pos)
 
         elif self.mode == "AI vs AI":
             lbl1 = self.font_med.render("2. Algoritma AI 1 (O):", True, TEXT_DARK)
             self.screen.blit(lbl1, (menu_x, y_algo))
-            for i, algo in enumerate(["Minimax", "Alpha-Beta"]):
-                rect = pygame.Rect(menu_x + i * (half_w + 15), y_algo + 30, half_w, 38)
+            for i, algo in enumerate(ALGO_OPTIONS):
+                rect = pygame.Rect(menu_x + i * (algo_w + gap), y_algo + 30, algo_w, 38)
                 bg = BTN_COLOR if self.algo_p1 == algo else (189, 195, 199)
-                self.menu_buttons[f"algo1_{algo}"] = draw_button(self.screen, rect, algo, self.font_med, bg, BTN_HOVER, mouse_pos)
+                self.menu_buttons[f"algo1_{algo}"] = draw_button(self.screen, rect, algo, self.font_small_bold, bg, BTN_HOVER, mouse_pos)
 
             lbl2 = self.font_med.render("3. Algoritma AI 2 (X):", True, TEXT_DARK)
             self.screen.blit(lbl2, (menu_x, y_algo + 80))
-            for i, algo in enumerate(["Minimax", "Alpha-Beta"]):
-                rect = pygame.Rect(menu_x + i * (half_w + 15), y_algo + 110, half_w, 38)
+            for i, algo in enumerate(ALGO_OPTIONS):
+                rect = pygame.Rect(menu_x + i * (algo_w + gap), y_algo + 110, algo_w, 38)
                 bg = BTN_COLOR if self.algo_p2 == algo else (189, 195, 199)
-                self.menu_buttons[f"algo2_{algo}"] = draw_button(self.screen, rect, algo, self.font_med, bg, BTN_HOVER, mouse_pos)
+                self.menu_buttons[f"algo2_{algo}"] = draw_button(self.screen, rect, algo, self.font_small_bold, bg, BTN_HOVER, mouse_pos)
 
-        start_rect = pygame.Rect(menu_x, HEIGHT - 85, menu_w, 50)
-        self.menu_buttons["start"] = draw_button(self.screen, start_rect, "MULAI PERMAINAN", self.font_large, HEADER_COLOR, (31, 97, 141), mouse_pos)
+        btn_gap = 12
+        start_w = 240
+        exp_w = menu_w - start_w - btn_gap
+        start_rect = pygame.Rect(menu_x, HEIGHT - 82, start_w, 50)
+        exp_rect = pygame.Rect(menu_x + start_w + btn_gap, HEIGHT - 82, exp_w, 50)
+        self.menu_buttons["start"] = draw_button(
+            self.screen, start_rect, "MULAI PERMAINAN", self.font_med, HEADER_COLOR, (31, 97, 141), mouse_pos
+        )
+        self.menu_buttons["experiments"] = draw_button(
+            self.screen, exp_rect, "HASIL EKSPERIMEN", self.font_med, BTN_SUCCESS, (39, 174, 96), mouse_pos
+        )
 
     # ---------------- RENDER GAME & PANEL STATISTIK ----------------
     def draw_game(self, mouse_pos):
@@ -446,6 +464,15 @@ class TicTacToeUI:
                         self.algo_p2 = key.replace("algo2_", "")
                     elif key == "start":
                         self.start_new_session()
+                    elif key == "experiments":
+                        self.experiment_dashboard.reload_data()
+                        self.screen_state = "experiments"
+            return
+
+        if self.screen_state == "experiments":
+            action = self.experiment_dashboard.handle_click(pos)
+            if action == "menu":
+                self.screen_state = "menu"
             return
 
         if self.popup == "gameover":
@@ -496,6 +523,8 @@ class TicTacToeUI:
 
             if self.screen_state == "menu":
                 self.draw_menu(mouse_pos)
+            elif self.screen_state == "experiments":
+                self.experiment_dashboard.draw(mouse_pos)
             else:
                 self.draw_game(mouse_pos)
 

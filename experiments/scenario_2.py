@@ -48,9 +48,9 @@ BOARD_STATES = [
     {
         "name": "Akhir Permainan",
         "board": [
-            AI, HUMAN, AI,
-            HUMAN, EMPTY, HUMAN,
-            AI, AI, EMPTY
+            HUMAN, AI, HUMAN,
+            HUMAN, AI, AI,
+            EMPTY, HUMAN, EMPTY
         ]
     }
 ]
@@ -236,4 +236,5 @@ def run_scenario_2():
 # 6. PROGRAM UTAMA
 # ==========================================
 
-run_scenario_2()
+if __name__ == "__main__":
+    run_scenario_2()
